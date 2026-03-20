@@ -1,20 +1,4 @@
-FROM composer:latest AS composer
-
-WORKDIR /app
-
-RUN composer create-project symfony/skeleton:"6.4.*" /tmp/project \
-    && cp -r /tmp/project/. /app
-
-RUN composer require \
-        symfony/framework-bundle \
-        symfony/dotenv \
-        predis/predis \
-    && composer require --dev \
-        phpunit/phpunit \
-        mockery/mockery \
-        symfony/test-pack
-
-FROM php:8.2-cli
+FROM php:8.4-cli
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -24,8 +8,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN pecl install redis && docker-php-ext-enable redis
 
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 WORKDIR /app
 
-COPY --from=composer /app .
+COPY . .
+
+RUN composer install
 
 CMD ["php", "-S", "0.0.0.0:8080", "-t", "public"]
