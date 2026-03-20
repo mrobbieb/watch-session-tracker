@@ -10,6 +10,13 @@ I implemented queue based ingestion via Symfony Messenger to address the Operati
 
 
 ## Start the Service
+
+On first run, Docker will build the image automatically:
+```bash
+docker compose up --build
+```
+
+On subsequent runs:
 ```bash
 docker compose up
 ```
@@ -41,7 +48,7 @@ I did add an integration test `test_multiple_concurrent_viewers_are_counted` whi
 
 - **sessionId is client-generated and trusted.** The SDK owns session identity. No server-side session ID generation.
 
-- **eventTimestamp is authoritative for duration calculation**, not receivedAt. Network latency means receivedAt may not accurately reflect when the event actually occurred.
+- **eventTimestamp is authoritative for duration calculation**, not receivedAt. Network latency means receivedAt may not accurately reflect when the event actually occurred. 
 
 - **Event types are limited to the set defined in the PRD.** Unknown event types are accepted by the HTTP layer and queued, but discarded by the worker with a log warning. This prioritizes the Operations requirement of never dropping events over early validation feedback at the API boundary.
 
