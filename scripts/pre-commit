@@ -1,0 +1,14 @@
+#!/bin/bash
+
+echo "Running tests before commit..."
+
+docker compose exec -T app vendor/bin/phpunit
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Tests failed. Commit aborted."
+    exit 1
+fi
+
+echo "All tests passed. Proceeding with commit."
+exit 0
