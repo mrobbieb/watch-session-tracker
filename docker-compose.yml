@@ -12,6 +12,19 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
+  worker:
+    build: .
+    command: php bin/console messenger:consume async --time-limit=3600 -vv
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:

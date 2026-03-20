@@ -1,0 +1,18 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: 'redis://%env(REDIS_HOST)%:%env(REDIS_PORT)%/messages'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+
+            failed:
+                dsn: 'redis://%env(REDIS_HOST)%:%env(REDIS_PORT)%/failed'
+
+        routing:
+            App\Message\IngestWatchEvent: async
