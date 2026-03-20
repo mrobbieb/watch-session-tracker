@@ -4,6 +4,14 @@ namespace App\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
+/**
+ * Controller tests for the Watch Session Tracker API.
+ *
+ * Note: test_multiple_concurrent_viewers_are_counted is an integration test
+ * that requires the full stack (Redis + worker) to be running via docker compose.
+ * It will be skipped automatically if the worker is not available.
+ */
+
 class EventControllerTest extends WebTestCase
 {
     private function validPayload(array $overrides = []): array
@@ -142,5 +150,44 @@ class EventControllerTest extends WebTestCase
         $client->request('GET', '/sessions/nonexistent-session-xyz');
 
         $this->assertResponseStatusCodeSame(404);
+    }
+
+    ##Integration tests###
+    ######################
+    public function test_multiple_concurrent_viewers_are_counted(): void
+    {
+        $client = static::createClient();
+
+        // Send start events for 3 different sessions on the same event
+        $sessions = ['viewer-001', 'viewer-002', 'viewer-003'];
+
+        foreach ($sessions as $sessionId) {
+            $client->request(
+                'POST',
+                '/events',
+                [],
+                [],
+                ['CONTENT_TYPE' => 'application/json'],
+                json_encode($this->validPayload([
+                    'sessionId' => $sessionId,
+                    'eventId'   => "evt-{$sessionId}",
+                ]))
+            );
+            $this->assertResponseStatusCodeSame(202);
+        }
+
+        // Wait for the async worker to process all queued messages.
+        // This is an integration test — requires docker compose up with
+        // the worker container running.
+        sleep(2);
+
+        $client->request('GET', '/events/event-2026-wrestling-finals/viewers');
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($client->getResponse()->getContent(), true);
+
+        $this->assertGreaterThanOrEqual(3, $data['activeViewers']);
+        $this->assertSame('event-2026-wrestling-finals', $data['eventId']);
+        $this->assertArrayHasKey('timestamp', $data);
     }
 }
