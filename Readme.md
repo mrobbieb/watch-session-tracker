@@ -21,6 +21,39 @@ On subsequent runs:
 docker compose up
 ```
 
+## Quick Start Test
+
+Once the service is running, verify it's working with these curl commands:
+
+**Send a start event:**
+```bash
+curl -X POST http://localhost:8080/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sessionId": "test-session-001",
+    "userId": "user-123",
+    "eventType": "start",
+    "eventId": "evt-001",
+    "eventTimestamp": "2026-02-10T19:32:15.123Z",
+    "receivedAt": "2026-02-10T19:32:15.450Z",
+    "payload": {
+      "eventId": "event-2026-wrestling-finals",
+      "position": 0,
+      "quality": "1080p"
+    }
+  }'
+```
+
+**Check active viewers:**
+```bash
+curl http://localhost:8080/events/event-2026-wrestling-finals/viewers
+```
+
+**Check session details:**
+```bash
+curl http://localhost:8080/sessions/test-session-001
+```
+
 ## Run Tests
 ```bash
 docker compose exec app vendor/bin/phpunit
