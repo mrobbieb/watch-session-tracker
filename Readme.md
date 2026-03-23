@@ -1,6 +1,6 @@
 # Watch Session Tracker
 
-A real time watch session tracking service for FS utilizing redis and symfony messaging queue.
+A real time watch session tracking service for FlowSports utilizing redis and symfony messaging queue.
 
 I implemented queue based ingestion via Symfony Messenger to address the Operations requirement around event durability. The HTTP endpoint enqueues the raw payload and returns 202 immediately. A worker processes events asynchronously. This adds minimal complexity while solving the spike/loss problem directly.
 
@@ -110,15 +110,32 @@ I did add an integration test `test_multiple_concurrent_viewers_are_counted` whi
 
 - **PHP 8.4 over PHP 7.2.** FloSports currently runs PHP 7.2. I chose 8.4 because it's where I'm most productive today and aligns with the modernization direction. I'm comfortable working within a 7.2 codebase and understand the constraints.
 
+- **Active viewer count reflects concurrent sessions, not unique users.** A single user 
+  watching on two devices counts as two viewers. This is intentional for v1. the PRD 
+  asked for concurrent viewer count which maps naturally to sessions. Adding unique user 
+  counting would require an additional Redis Set per event storing userIds alongside the 
+  session sorted set. I'd clarify with the product team which metric the dashboard 
+  actually needs before implementing.
+
+- **No input validation beyond structural checks.** The `EventController` validates that 
+  required fields are present but does not validate field formats, timestamp ranges, or 
+  payload values. In production I'd add a validation layer using Symfony Validator before 
+  enqueueing.
+
+- **No pagination on session endpoints.** The active sessions endpoint returns all 
+  sessions in one response. At scale with thousands of concurrent viewers this would be 
+  a problem. In production I'd add pagination.
+
+- **Single worker consumer.** For v1, one worker processes the queue. Under sustained high 
+  load you'd scale horizontally by running multiple worker containers. Messenger 
+  handles concurrent consumers safely out of the box.
+
 ## What I'd Do Differently in Production
 
 **Persistence with Doctrine ORM**
-I'd replace the Redis only storage model with a proper persistence layer using Doctrine ORM. Watch events would be modeled as a `WatchEvent` entity mapped to a MySQL table, giving us full historical queryability and auditability. 
+I'd replace the Redis only storage model with a proper persistence layer using Doctrine ORM. WatchEvents would be modeled as a `WatchEvent` entity mapped to a MySQL table, giving us full historical queryability and auditability. 
 
 The Redis sorted set approach for active viewer counts would remain.it's the right tool for that specific real-time query; but it would act as a cache layer in front of MySQL rather than the source of truth. Session state would be persisted to MySQL via Doctrine and cached in Redis for low-latency reads.
-
-**Queue-based ingestion**
-Symfony Messenger with a Redis transport would handle the ingestion pipeline. The HTTP endpoint enqueues and returns 202. Workers consume and process. This addresses the operations concern about dropped events during spikes.
 
 **Event deduplication**
 Track processed eventIds in a Redis SET. Reject duplicates before processing. Critical for delivery guarantees from the queue.
